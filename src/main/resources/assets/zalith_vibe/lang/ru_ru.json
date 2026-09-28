@@ -1,0 +1,16 @@
+{
+  "zalith_vibe.title": "Настройки Вибрации Zalith",
+  "zalith_vibe.enabled": "Вибрация включена",
+  "zalith_vibe.break_enabled": "Вибрация при ломании блоков",
+  "zalith_vibe.break_duration": "Длительность ломания: %d мс",
+  "zalith_vibe.break_strength": "Сила ломания: %d",
+  "zalith_vibe.place_enabled": "Вибрация при установке блоков",
+  "zalith_vibe.place_duration": "Длительность установки: %d мс",
+  "zalith_vibe.place_strength": "Сила установки: %d",
+  "zalith_vibe.mining_pulse": "Пульс при долгом копании",
+  "zalith_vibe.attack_enabled": "Вибрация при атаке мобов",
+  "zalith_vibe.test_vibration": "Проверить вибрацию",
+  "zalith_vibe.save": "Сохранить и закрыть",
+  "zalith_vibe.status.android": "Статус: Подключено к Android API (Zalith 2+)",
+  "zalith_vibe.status.desktop": "Статус: Запущено на ПК (вибрация эмулируется)"
+}

@@ -1,0 +1,16 @@
+{
+  "zalith_vibe.title": "Zalith Vibration Settings",
+  "zalith_vibe.enabled": "Haptics Enabled",
+  "zalith_vibe.break_enabled": "Vibrate on Block Break",
+  "zalith_vibe.break_duration": "Break Duration: %d ms",
+  "zalith_vibe.break_strength": "Break Strength: %d",
+  "zalith_vibe.place_enabled": "Vibrate on Block Place",
+  "zalith_vibe.place_duration": "Place Duration: %d ms",
+  "zalith_vibe.place_strength": "Place Strength: %d",
+  "zalith_vibe.mining_pulse": "Continuous Mining Pulse",
+  "zalith_vibe.attack_enabled": "Vibrate on Attack",
+  "zalith_vibe.test_vibration": "Test Vibration",
+  "zalith_vibe.save": "Save & Close",
+  "zalith_vibe.status.android": "Status: Connected to Android Haptic Bridge",
+  "zalith_vibe.status.desktop": "Status: Desktop preview mode (emulated)"
+}

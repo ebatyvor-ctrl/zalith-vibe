@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "zalith_vibe",
+  "version": "${version}",
+  "name": "Zalith Haptic Vibe",
+  "description": "Tactile vibration feedback for block breaking and placing in Zalith Launcher 2+ and PojavLauncher on Android.",
+  "authors": [
+    "Zalith Community",
+    "Pojav / TouchController Ports"
+  ],
+  "contact": {
+    "sources": "https://github.com/example/zalith-vibe"
+  },
+  "license": "MIT",
+  "icon": "assets/zalith_vibe/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.zalith.vibe.ZalithVibeMod"
+    ],
+    "modmenu": [
+      "com.zalith.vibe.gui.ModMenuApiImpl"
+    ]
+  },
+  "mixins": [
+    "zalith_vibe.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21"
+  }
+}
