@@ -18,25 +18,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ClientPlayerInteractionManagerMixin {
 
     /**
-     * Перехват установки блока на @At("HEAD") без зависимости от ActionResult
-     * (гарантирует совместимость и с 1.21.1, и с 1.21.11+)
+     * Вибрация при установке блока ТОЛЬКО если в руке есть предмет/блок
      */
     @Inject(method = "interactBlock", at = @At("HEAD"))
     private void zalith_onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<?> cir) {
-        ZalithVibeMod.getInstance().onBlockPlaced();
+        if (player != null && !player.getStackInHand(hand).isEmpty()) {
+            ZalithVibeMod.getInstance().onBlockPlaced();
+        }
     }
 
-    /**
-     * Перехват ломания блока
-     */
     @Inject(method = "breakBlock", at = @At("HEAD"))
     private void zalith_onBreakBlock(BlockPos pos, CallbackInfoReturnable<?> cir) {
         ZalithVibeMod.getInstance().onBlockBroken();
     }
 
-    /**
-     * Перехват атаки по сущностям
-     */
     @Inject(method = "attackEntity", at = @At("HEAD"))
     private void zalith_onAttackEntity(PlayerEntity player, Entity target, CallbackInfo ci) {
         ZalithVibeMod.getInstance().onEntityAttacked();

@@ -14,22 +14,9 @@ public class VibrationConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public boolean enabled = true;
-    
-    // События
-    public boolean breakEnabled = true;
-    public int breakStrength = 2; // 1 = Слабая, 2 = Средняя, 3 = Сильная
-
-    public boolean placeEnabled = true;
+    public int breakStrength = 2; // 0 = Выкл, 1 = Слабая, 2 = Средняя, 3 = Сильная
     public int placeStrength = 1;
-
-    public boolean attackEnabled = true;
     public int attackStrength = 2;
-
-    public boolean damageEnabled = true;
-    public int damageStrength = 3;
-
-    public boolean hotbarEnabled = true;
-    public int hotbarStrength = 1;
 
     public static VibrationConfig load() {
         if (!CONFIG_FILE.exists()) {
@@ -55,5 +42,15 @@ public class VibrationConfig {
         } catch (Exception e) {
             ZalithVibeMod.LOGGER.error("[ZalithVibe] Failed to save config", e);
         }
+    }
+
+    public static String getStrengthLabel(int strength) {
+        return switch (strength) {
+            case 0 -> "ВЫКЛ";
+            case 1 -> "Слабая (1x)";
+            case 2 -> "Средняя (2x)";
+            case 3 -> "Сильная (3x)";
+            default -> "ВЫКЛ";
+        };
     }
 }
