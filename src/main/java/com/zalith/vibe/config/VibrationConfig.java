@@ -14,9 +14,10 @@ public class VibrationConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public boolean enabled = true;
-    public int breakStrength = 2; // 0 = Выкл, 1 = Слабая, 2 = Средняя, 3 = Сильная
+    public int breakStrength = 2;
     public int placeStrength = 1;
     public int attackStrength = 2;
+    public boolean bowEnabled = true;
 
     public static VibrationConfig load() {
         if (!CONFIG_FILE.exists()) {

@@ -67,18 +67,12 @@ public class AndroidVibratorBridge {
         return false;
     }
 
+    // Стандартная вибрация (1-3 импульса)
     public void vibrate(final int repeats) {
         executor.execute(() -> {
-            if (socketFd < 0) {
-                tryConnect();
-            }
-
+            if (socketFd < 0) tryConnect();
             int count = Math.max(1, Math.min(repeats, 4));
-            byte[] packet = new byte[] {
-                8,
-                0, 0, 0, 4,
-                0, 0, 0, 0
-            };
+            byte[] packet = new byte[] { 8, 0, 0, 0, 4, 0, 0, 0, 0 };
 
             for (int i = 0; i < count; i++) {
                 if (socketFd >= 0) {
@@ -90,13 +84,34 @@ public class AndroidVibratorBridge {
                     }
                 } else {
                     try {
-                        Runtime.getRuntime().exec(new String[]{"cmd", "vibrator", "vibrate", "60"});
+                        Runtime.getRuntime().exec(new String[]{"cmd", "vibrator", "vibrate", "50"});
                     } catch (Throwable ignored) {}
                 }
 
                 if (i < count - 1) {
                     try { Thread.sleep(70); } catch (InterruptedException ignored) {}
                 }
+            }
+        });
+    }
+
+    // Сверхкороткая микро-вибрация (0.5) для натяжения тетивы
+    public void vibrateMicro() {
+        executor.execute(() -> {
+            if (socketFd < 0) tryConnect();
+            byte[] packet = new byte[] { 8, 0, 0, 0, 4, 0, 0, 0, 0 };
+
+            if (socketFd >= 0) {
+                try {
+                    LibC.INSTANCE.write(socketFd, packet, packet.length);
+                } catch (Throwable t) {
+                    try { LibC.INSTANCE.close(socketFd); } catch (Throwable ignored) {}
+                    socketFd = -1;
+                }
+            } else {
+                try {
+                    Runtime.getRuntime().exec(new String[]{"cmd", "vibrator", "vibrate", "15"});
+                } catch (Throwable ignored) {}
             }
         });
     }

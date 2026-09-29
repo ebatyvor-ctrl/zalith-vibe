@@ -19,7 +19,7 @@ public class ZalithVibeMod implements ClientModInitializer {
         instance = this;
         this.config = VibrationConfig.load();
         bridge.initialize();
-        LOGGER.info("[ZalithVibe] Initialized with ModMenu config & TouchController alias!");
+        LOGGER.info("[ZalithVibe] Initialized with Bow Pull (0.5) and Shoot haptics!");
     }
 
     public static ZalithVibeMod getInstance() {
@@ -47,5 +47,17 @@ public class ZalithVibeMod implements ClientModInitializer {
     public void onEntityAttacked() {
         if (!config.enabled || config.attackStrength <= 0) return;
         bridge.vibrate(config.attackStrength);
+    }
+
+    // Натяжение тетивы (0.5 - лёгкий микро-клик)
+    public void onBowPull() {
+        if (!config.enabled || !config.bowEnabled) return;
+        bridge.vibrateMicro();
+    }
+
+    // Выстрел из лука (1 - импульс отдачи)
+    public void onBowShoot() {
+        if (!config.enabled || !config.bowEnabled) return;
+        bridge.vibrate(1);
     }
 }
