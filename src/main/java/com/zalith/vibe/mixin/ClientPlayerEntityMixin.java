@@ -23,7 +23,7 @@ public class ClientPlayerEntityMixin {
     @Unique
     private int zalith$lastUseTicks = 0;
     @Unique
-    private int zalith$lastSlot = -1;
+    private ItemStack zalith$lastHandItem = ItemStack.EMPTY;
     @Unique
     private int zalith$heartbeatTick = 0;
     @Unique
@@ -33,12 +33,12 @@ public class ClientPlayerEntityMixin {
     private void zalith_onPlayerTick(CallbackInfo ci) {
         ClientPlayerEntity player = (ClientPlayerEntity) (Object) this;
 
-        // 1. Хотбар: переключение слотов
-        int currentSlot = player.getInventory().selectedSlot;
-        if (zalith$lastSlot != -1 && zalith$lastSlot != currentSlot) {
+        // 1. Хотбар: безопасное отслеживание смены предмета в руке без приватных полей
+        ItemStack currentItem = player.getMainHandStack();
+        if (zalith$lastHandItem != null && currentItem != zalith$lastHandItem) {
             ZalithVibeMod.getInstance().onHotbarChanged();
         }
-        zalith$lastSlot = currentSlot;
+        zalith$lastHandItem = currentItem;
 
         // 2. Пульс сердца (<3 сердечек / <=6 HP)
         if (player.isAlive() && player.getHealth() <= 6.0f) {
@@ -50,7 +50,7 @@ public class ClientPlayerEntityMixin {
             zalith$heartbeatTick = 0;
         }
 
-        // 3. Рыбалка: поклёвка рыбы (резкое ныряние поплавка вниз)
+        // 3. Рыбалка: поклёвка рыбы (ныряние поплавка вниз)
         if (player.fishHook != null) {
             if (player.fishHook.getVelocity().y < -0.07) {
                 if (!zalith$wasFishingBite) {
@@ -64,12 +64,11 @@ public class ClientPlayerEntityMixin {
             zalith$wasFishingBite = false;
         }
 
-        // 4. Поедание еды и напитков
+        // 4. Поедание еды и натяжение тетивы лука
         if (player.isUsingItem()) {
             ItemStack active = player.getActiveItem();
             int time = player.getItemUseTime();
 
-            // Лук и арбалет
             if (active.getItem() instanceof BowItem || active.getItem() instanceof CrossbowItem) {
                 zalith$wasUsingBow = true;
                 zalith$lastUseTicks = time;
@@ -79,7 +78,6 @@ public class ClientPlayerEntityMixin {
                 return;
             }
 
-            // Жевание еды (каждые 4 тика легкий клик)
             if (time > 0 && time % 4 == 0) {
                 ZalithVibeMod.getInstance().onEatTick();
             }
@@ -94,7 +92,7 @@ public class ClientPlayerEntityMixin {
             zalith$lastUseTicks = 0;
         }
 
-        // 6. Обнаружение шипения крипера рядом (в радиусе 6 блоков)
+        // 6. Шипение крипера поблизости
         if (player.age % 4 == 0 && player.getWorld() != null) {
             try {
                 Box box = player.getBoundingBox().expand(6.0);
