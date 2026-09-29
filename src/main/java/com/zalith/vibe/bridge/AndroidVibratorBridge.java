@@ -43,17 +43,14 @@ public class AndroidVibratorBridge {
 
         for (String target : targets) {
             try {
-                int fd = LibC.INSTANCE.socket(1, 1, 0); // AF_UNIX = 1, SOCK_STREAM = 1
+                int fd = LibC.INSTANCE.socket(1, 1, 0);
                 if (fd < 0) continue;
 
                 byte[] nameBytes = target.getBytes(StandardCharsets.US_ASCII);
-                // struct sockaddr_un на Linux:
-                // short sun_family (1 = AF_UNIX)
-                // char sun_path с ведущим '\0' для abstract namespace
                 byte[] sockaddr = new byte[2 + 1 + nameBytes.length];
-                sockaddr[0] = 1; // AF_UNIX low byte
-                sockaddr[1] = 0; // AF_UNIX high byte
-                sockaddr[2] = 0; // Abstract namespace null byte
+                sockaddr[0] = 1;
+                sockaddr[1] = 0;
+                sockaddr[2] = 0;
                 System.arraycopy(nameBytes, 0, sockaddr, 3, nameBytes.length);
 
                 int result = LibC.INSTANCE.connect(fd, sockaddr, sockaddr.length);
@@ -70,40 +67,37 @@ public class AndroidVibratorBridge {
         return false;
     }
 
-    public void vibrate(final long durationMs, final int strength) {
+    public void vibrate(final int repeats) {
         executor.execute(() -> {
             if (socketFd < 0) {
                 tryConnect();
             }
 
-            if (socketFd >= 0) {
-                try {
-                    // Пакет VibrateMessage (TouchController): Длина(8) + Тип(4) + Kind(0)
-                    byte[] packet = new byte[] {
-                        8,              // Payload length
-                        0, 0, 0, 4,     // Type 4: VibrateMessage
-                        0, 0, 0, 0      // Kind 0: BLOCK_BROKEN
-                    };
-                    int res = LibC.INSTANCE.write(socketFd, packet, packet.length);
-                    if (res == packet.length) {
-                        return; // Успешно отправлено в Zalith Launcher!
-                    } else {
-                        LibC.INSTANCE.close(socketFd);
-                        socketFd = -1;
-                    }
-                } catch (Throwable t) {
-                    if (socketFd >= 0) {
+            int count = Math.max(1, Math.min(repeats, 4));
+            byte[] packet = new byte[] {
+                8,
+                0, 0, 0, 4,
+                0, 0, 0, 0
+            };
+
+            for (int i = 0; i < count; i++) {
+                if (socketFd >= 0) {
+                    try {
+                        LibC.INSTANCE.write(socketFd, packet, packet.length);
+                    } catch (Throwable t) {
                         try { LibC.INSTANCE.close(socketFd); } catch (Throwable ignored) {}
                         socketFd = -1;
                     }
+                } else {
+                    try {
+                        Runtime.getRuntime().exec(new String[]{"cmd", "vibrator", "vibrate", "60"});
+                    } catch (Throwable ignored) {}
+                }
+
+                if (i < count - 1) {
+                    try { Thread.sleep(70); } catch (InterruptedException ignored) {}
                 }
             }
-
-            // Запасной вызов через Android cmd
-            try {
-                int ms = (int) Math.max(10, Math.min(durationMs, 500));
-                Runtime.getRuntime().exec(new String[]{"cmd", "vibrator", "vibrate", String.valueOf(ms)});
-            } catch (Throwable ignored) {}
         });
     }
 

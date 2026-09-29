@@ -10,62 +10,39 @@ import java.io.FileReader;
 import java.io.FileWriter;
 
 public class VibrationConfig {
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final File CONFIG_FILE = new File(FabricLoader.getInstance().getConfigDir().toFile(), "zalith_vibe.json");
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    // Master switch
     public boolean enabled = true;
-
-    // Block breaking
+    
+    // События
     public boolean breakEnabled = true;
-    public int breakDurationMs = 45;
-    public int breakStrength = 220;
+    public int breakStrength = 2; // 1 = Слабая, 2 = Средняя, 3 = Сильная
 
-    // Block placing
     public boolean placeEnabled = true;
-    public int placeDurationMs = 25;
-    public int placeStrength = 160;
+    public int placeStrength = 1;
 
-    // Mining tick pulse (continuous feedback while mining obsidian, etc.)
-    public boolean miningPulseEnabled = true;
-    public int miningPulseMs = 15;
-
-    // Combat & interactions
     public boolean attackEnabled = true;
-    public int attackDurationMs = 35;
-
-    public boolean bowEnabled = true;
-    public int bowDurationMs = 30;
+    public int attackStrength = 2;
 
     public boolean damageEnabled = true;
-    public int damageDurationMs = 80;
+    public int damageStrength = 3;
 
-    public void load() {
+    public boolean hotbarEnabled = true;
+    public int hotbarStrength = 1;
+
+    public static VibrationConfig load() {
         if (!CONFIG_FILE.exists()) {
-            save();
-            return;
+            VibrationConfig cfg = new VibrationConfig();
+            cfg.save();
+            return cfg;
         }
         try (FileReader reader = new FileReader(CONFIG_FILE)) {
-            VibrationConfig loaded = GSON.fromJson(reader, VibrationConfig.class);
-            if (loaded != null) {
-                this.enabled = loaded.enabled;
-                this.breakEnabled = loaded.breakEnabled;
-                this.breakDurationMs = loaded.breakDurationMs;
-                this.breakStrength = loaded.breakStrength;
-                this.placeEnabled = loaded.placeEnabled;
-                this.placeDurationMs = loaded.placeDurationMs;
-                this.placeStrength = loaded.placeStrength;
-                this.miningPulseEnabled = loaded.miningPulseEnabled;
-                this.miningPulseMs = loaded.miningPulseMs;
-                this.attackEnabled = loaded.attackEnabled;
-                this.attackDurationMs = loaded.attackDurationMs;
-                this.bowEnabled = loaded.bowEnabled;
-                this.bowDurationMs = loaded.bowDurationMs;
-                this.damageEnabled = loaded.damageEnabled;
-                this.damageDurationMs = loaded.damageDurationMs;
-            }
+            VibrationConfig cfg = GSON.fromJson(reader, VibrationConfig.class);
+            return cfg != null ? cfg : new VibrationConfig();
         } catch (Exception e) {
-            ZalithVibeMod.LOGGER.error("[ZalithVibe] Failed to load config, keeping defaults", e);
+            ZalithVibeMod.LOGGER.error("[ZalithVibe] Failed to load config", e);
+            return new VibrationConfig();
         }
     }
 
