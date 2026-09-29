@@ -9,7 +9,6 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -29,13 +28,6 @@ public class ClientPlayerInteractionManagerMixin {
     @Inject(method = "breakBlock", at = @At("HEAD"))
     private void zalith_onBreakBlock(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
         ZalithVibeMod.getInstance().onBlockBroken();
-    }
-
-    @Inject(method = "updateBlockBreakingProgress", at = @At("HEAD"))
-    private void zalith_onUpdateMiningProgress(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
-        if (System.currentTimeMillis() % 150 < 25) {
-            ZalithVibeMod.getInstance().onMiningTick();
-        }
     }
 
     @Inject(method = "attackEntity", at = @At("HEAD"))

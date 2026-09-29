@@ -27,18 +27,23 @@ public class ZalithVibeMod implements ClientModInitializer {
         return bridge;
     }
 
-    // Установка блока: мягкий одиночный отклик (1 импульс)
+    // Мягкий отклик при установке блока (1 импульс)
     public void onBlockPlaced() {
         bridge.vibrate(1);
     }
 
-    // Ломание блока: уверенный двойной отклик (2 импульса)
+    // Уверенный отклик при ломании блока (2 импульса)
     public void onBlockBroken() {
         bridge.vibrate(2);
     }
 
-    // Удар по мобу: сильный акцент (2 быстрых импульса)
+    // Акцент при атаке по мобу (2 быстрых импульса)
     public void onEntityAttacked() {
         bridge.vibrate(2);
+    }
+
+    // Пульс копания
+    public void onMiningTick() {
+        bridge.vibrate(1);
     }
 }
