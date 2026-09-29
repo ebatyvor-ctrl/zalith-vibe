@@ -18,6 +18,13 @@ public class VibrationConfig {
     public int placeStrength = 1;
     public int attackStrength = 2;
     public boolean bowEnabled = true;
+    public boolean fishingEnabled = true;
+    public boolean heartbeatEnabled = true;
+    public boolean creeperEnabled = true;
+    public boolean shieldCritEnabled = true;
+    public boolean hotbarEnabled = true;
+    public boolean itemBreakEnabled = true;
+    public boolean eatEnabled = true;
 
     public static VibrationConfig load() {
         if (!CONFIG_FILE.exists()) {
