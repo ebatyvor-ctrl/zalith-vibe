@@ -1,132 +1,110 @@
 package com.zalith.vibe.bridge;
 
+import com.sun.jna.Library;
+import com.sun.jna.Native;
 import com.zalith.vibe.ZalithVibeMod;
-import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Universal Android Haptic Bridge.
- * Extracted and optimized from TouchController:
- * Resolves vibration through:
- * 1. Zalith Launcher 2+ Native Bridge
- * 2. PojavLauncher Tools (net.kdt.pojavlaunch.Tools.vibrate)
- * 3. Android ActivityThread / Context / Vibrator reflection (Universal Android fallback)
- * 
- * All vibration requests are asynchronously dispatched so Minecraft's game loop is NEVER blocked.
- */
 public class AndroidVibratorBridge {
-    private final ExecutorService vibrationExecutor = Executors.newSingleThreadExecutor(r -> {
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ZalithVibratorThread");
         t.setDaemon(true);
         return t;
     });
 
-    private boolean available = false;
-    private VibrationMethod method = VibrationMethod.NONE;
-
-    // Reflection caches
-    private Method pojavVibrateMethod;
-    private Method zalithVibrateMethod;
-    private Object androidVibratorInstance;
-    private Method androidVibrateMethod;
-    private Method androidCreateOneShotMethod;
-
-    public enum VibrationMethod {
-        ZALITH_NATIVE,
-        POJAV_TOOLS,
-        ANDROID_REFLECTION,
-        NONE
+    public interface LibC extends Library {
+        LibC INSTANCE = Native.load("c", LibC.class);
+        int socket(int domain, int type, int protocol);
+        int connect(int fd, byte[] sockaddr, int addrlen);
+        int write(int fd, byte[] buf, int count);
+        int close(int fd);
     }
+
+    private volatile int socketFd = -1;
+    private volatile boolean initialized = false;
 
     public void initialize() {
-        // Tier 1: Try Zalith Launcher 2+ Direct Native Bridge
-        try {
-            Class<?> zalithClass = Class.forName("zalith.launcher.bridge.LauncherBridge");
-            zalithVibrateMethod = zalithClass.getMethod("vibrate", long.class, int.class);
-            method = VibrationMethod.ZALITH_NATIVE;
-            available = true;
-            ZalithVibeMod.LOGGER.info("[ZalithVibe] Initialized with Zalith Launcher 2+ Native Bridge!");
-            return;
-        } catch (Throwable ignored) {}
-
-        // Tier 2: Try PojavLauncher Tools.vibrate(int ms)
-        try {
-            Class<?> toolsClass = Class.forName("net.kdt.pojavlaunch.Tools");
-            pojavVibrateMethod = toolsClass.getMethod("vibrate", int.class);
-            method = VibrationMethod.POJAV_TOOLS;
-            available = true;
-            ZalithVibeMod.LOGGER.info("[ZalithVibe] Initialized with PojavLauncher Tools bridge!");
-            return;
-        } catch (Throwable ignored) {}
-
-        // Tier 3: Universal Android Framework Reflection (ActivityThread -> Application -> Vibrator)
-        try {
-            Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
-            Method currentApplicationMethod = activityThreadClass.getMethod("currentApplication");
-            Object app = currentApplicationMethod.invoke(null);
-
-            if (app != null) {
-                Method getSystemServiceMethod = app.getClass().getMethod("getSystemService", String.class);
-                androidVibratorInstance = getSystemServiceMethod.invoke(app, "vibrator");
-
-                if (androidVibratorInstance != null) {
-                    try {
-                        // Check for VibrationEffect (Android O+ / API 26+)
-                        Class<?> vibrationEffectClass = Class.forName("android.os.VibrationEffect");
-                        androidCreateOneShotMethod = vibrationEffectClass.getMethod("createOneShot", long.class, int.class);
-                        androidVibrateMethod = androidVibratorInstance.getClass().getMethod("vibrate", vibrationEffectClass);
-                    } catch (Throwable fallbackPreO) {
-                        // Fallback to legacy vibrate(long milliseconds)
-                        androidVibrateMethod = androidVibratorInstance.getClass().getMethod("vibrate", long.class);
-                    }
-                    method = VibrationMethod.ANDROID_REFLECTION;
-                    available = true;
-                    ZalithVibeMod.LOGGER.info("[ZalithVibe] Initialized with Universal Android Vibrator Reflection!");
-                    return;
-                }
-            }
-        } catch (Throwable ignored) {}
-
-        ZalithVibeMod.LOGGER.warn("[ZalithVibe] Running outside Android or launcher bridge unavailable. Vibration disabled.");
-        available = false;
-        method = VibrationMethod.NONE;
+        executor.execute(this::tryConnect);
     }
 
-    /**
-     * Vibrate device with given duration and strength (1-255).
-     */
-    public void vibrate(final long durationMs, final int strength) {
-        if (!available) return;
-        final int clampedDuration = (int) Math.max(1, Math.min(durationMs, 1000));
-        final int clampedStrength = Math.max(1, Math.min(strength, 255));
+    private synchronized boolean tryConnect() {
+        if (socketFd >= 0) return true;
 
-        vibrationExecutor.execute(() -> {
+        String envSocket = System.getenv("TOUCH_CONTROLLER_PROXY_SOCKET");
+        String[] targets = new String[] {
+            (envSocket != null && !envSocket.isEmpty()) ? envSocket : "Zalith Launcher 2",
+            "Zalith Launcher 2",
+            "Zalith Launcher",
+            "zalith.launcher",
+            "pojavlauncher"
+        };
+
+        for (String target : targets) {
             try {
-                switch (method) {
-                    case ZALITH_NATIVE -> zalithVibrateMethod.invoke(null, (long) clampedDuration, clampedStrength);
-                    case POJAV_TOOLS -> pojavVibrateMethod.invoke(null, clampedDuration);
-                    case ANDROID_REFLECTION -> {
-                        if (androidCreateOneShotMethod != null) {
-                            Object effect = androidCreateOneShotMethod.invoke(null, (long) clampedDuration, clampedStrength);
-                            androidVibrateMethod.invoke(androidVibratorInstance, effect);
-                        } else if (androidVibrateMethod != null) {
-                            androidVibrateMethod.invoke(androidVibratorInstance, (long) clampedDuration);
-                        }
-                    }
-                    default -> {}
+                int fd = LibC.INSTANCE.socket(1, 1, 0); // AF_UNIX = 1, SOCK_STREAM = 1
+                if (fd < 0) continue;
+
+                byte[] nameBytes = target.getBytes(StandardCharsets.US_ASCII);
+                byte[] sockaddr = new byte[2 + 1 + nameBytes.length];
+                sockaddr[0] = 1; // AF_UNIX
+                sockaddr[1] = 0;
+                sockaddr[2] = 0; // Abstract namespace null byte
+                System.arraycopy(nameBytes, 0, sockaddr, 3, nameBytes.length);
+
+                int result = LibC.INSTANCE.connect(fd, sockaddr, sockaddr.length);
+                if (result == 0) {
+                    this.socketFd = fd;
+                    this.initialized = true;
+                    ZalithVibeMod.LOGGER.info("[ZalithVibe] Connected to Zalith Launcher socket: @" + target);
+                    return true;
+                } else {
+                    LibC.INSTANCE.close(fd);
                 }
-            } catch (Throwable t) {
-                // Silently handle transient vibration interruption
+            } catch (Throwable ignored) {}
+        }
+        return false;
+    }
+
+    public void vibrate(final long durationMs, final int strength) {
+        executor.execute(() -> {
+            if (socketFd < 0) {
+                tryConnect();
             }
+
+            if (socketFd >= 0) {
+                try {
+                    // Пакет VibrateMessage (TouchController): Длина(8) + Тип(4) + Kind(0)
+                    byte[] packet = new byte[] {
+                        8,
+                        0, 0, 0, 4,
+                        0, 0, 0, 0
+                    };
+                    int res = LibC.INSTANCE.write(socketFd, packet, packet.length);
+                    if (res == packet.length) {
+                        return;
+                    } else {
+                        LibC.INSTANCE.close(socketFd);
+                        socketFd = -1;
+                    }
+                } catch (Throwable t) {
+                    if (socketFd >= 0) {
+                        try { LibC.INSTANCE.close(socketFd); } catch (Throwable ignored) {}
+                        socketFd = -1;
+                    }
+                }
+            }
+
+            // Запасной вызов через Android shell
+            try {
+                int ms = (int) Math.max(10, Math.min(durationMs, 500));
+                Runtime.getRuntime().exec(new String[]{"cmd", "vibrator", "vibrate", String.valueOf(ms)});
+            } catch (Throwable ignored) {}
         });
     }
 
     public boolean isAvailable() {
-        return available;
-    }
-
-    public VibrationMethod getMethod() {
-        return method;
+        return socketFd >= 0 || initialized;
     }
 }
