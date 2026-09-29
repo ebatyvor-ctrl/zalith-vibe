@@ -1,7 +1,8 @@
 package com.zalith.vibe.bridge;
 
+import com.sun.jna.Library;
+import com.sun.jna.Native;
 import com.zalith.vibe.ZalithVibeMod;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -13,41 +14,23 @@ public class AndroidVibratorBridge {
         return t;
     });
 
+    public interface LibC extends Library {
+        LibC INSTANCE = Native.load("c", LibC.class);
+        int socket(int domain, int type, int protocol);
+        int connect(int fd, byte[] sockaddr, int addrlen);
+        int write(int fd, byte[] buf, int count);
+        int close(int fd);
+    }
+
     private volatile int socketFd = -1;
     private volatile boolean initialized = false;
 
-    private Object socketFunc;
-    private Object connectFunc;
-    private Object writeFunc;
-    private Object closeFunc;
-    private Method invokeIntMethod;
-
     public void initialize() {
-        executor.execute(this::setupJnaAndConnect);
-    }
-
-    private synchronized void setupJnaAndConnect() {
-        try {
-            Class<?> functionClass = Class.forName("com.sun.jna.Function");
-            Method getFunctionMethod = functionClass.getMethod("getFunction", String.class, String.class);
-            this.invokeIntMethod = functionClass.getMethod("invokeInt", Object[].class);
-
-            this.socketFunc = getFunctionMethod.invoke(null, "c", "socket");
-            this.connectFunc = getFunctionMethod.invoke(null, "c", "connect");
-            this.writeFunc = getFunctionMethod.invoke(null, "c", "write");
-            this.closeFunc = getFunctionMethod.invoke(null, "c", "close");
-
-            ZalithVibeMod.LOGGER.info("[ZalithVibe] JNA native libc functions loaded successfully!");
-        } catch (Throwable t) {
-            ZalithVibeMod.LOGGER.warn("[ZalithVibe] JNA libc functions not available: " + t.getMessage());
-        }
-
-        tryConnect();
+        executor.execute(this::tryConnect);
     }
 
     private synchronized boolean tryConnect() {
         if (socketFd >= 0) return true;
-        if (socketFunc == null || connectFunc == null || invokeIntMethod == null) return false;
 
         String envSocket = System.getenv("TOUCH_CONTROLLER_PROXY_SOCKET");
         String[] targets = new String[] {
@@ -60,26 +43,27 @@ public class AndroidVibratorBridge {
 
         for (String target : targets) {
             try {
-                int fd = (int) invokeIntMethod.invoke(socketFunc, (Object) new Object[]{1, 1, 0});
+                int fd = LibC.INSTANCE.socket(1, 1, 0); // AF_UNIX = 1, SOCK_STREAM = 1
                 if (fd < 0) continue;
 
                 byte[] nameBytes = target.getBytes(StandardCharsets.US_ASCII);
+                // struct sockaddr_un на Linux:
+                // short sun_family (1 = AF_UNIX)
+                // char sun_path с ведущим '\0' для abstract namespace
                 byte[] sockaddr = new byte[2 + 1 + nameBytes.length];
-                sockaddr[0] = 1; // AF_UNIX
-                sockaddr[1] = 0;
+                sockaddr[0] = 1; // AF_UNIX low byte
+                sockaddr[1] = 0; // AF_UNIX high byte
                 sockaddr[2] = 0; // Abstract namespace null byte
                 System.arraycopy(nameBytes, 0, sockaddr, 3, nameBytes.length);
 
-                int result = (int) invokeIntMethod.invoke(connectFunc, (Object) new Object[]{fd, sockaddr, sockaddr.length});
+                int result = LibC.INSTANCE.connect(fd, sockaddr, sockaddr.length);
                 if (result == 0) {
                     this.socketFd = fd;
                     this.initialized = true;
                     ZalithVibeMod.LOGGER.info("[ZalithVibe] Connected to Zalith Launcher socket: @" + target);
                     return true;
                 } else {
-                    if (closeFunc != null) {
-                        invokeIntMethod.invoke(closeFunc, (Object) new Object[]{fd});
-                    }
+                    LibC.INSTANCE.close(fd);
                 }
             } catch (Throwable ignored) {}
         }
@@ -92,32 +76,30 @@ public class AndroidVibratorBridge {
                 tryConnect();
             }
 
-            if (socketFd >= 0 && writeFunc != null && invokeIntMethod != null) {
+            if (socketFd >= 0) {
                 try {
+                    // Пакет VibrateMessage (TouchController): Длина(8) + Тип(4) + Kind(0)
                     byte[] packet = new byte[] {
                         8,              // Payload length
                         0, 0, 0, 4,     // Type 4: VibrateMessage
                         0, 0, 0, 0      // Kind 0: BLOCK_BROKEN
                     };
-                    int res = (int) invokeIntMethod.invoke(writeFunc, (Object) new Object[]{socketFd, packet, packet.length});
+                    int res = LibC.INSTANCE.write(socketFd, packet, packet.length);
                     if (res == packet.length) {
-                        return;
+                        return; // Успешно отправлено в Zalith Launcher!
                     } else {
-                        if (closeFunc != null) {
-                            invokeIntMethod.invoke(closeFunc, (Object) new Object[]{socketFd});
-                        }
+                        LibC.INSTANCE.close(socketFd);
                         socketFd = -1;
                     }
                 } catch (Throwable t) {
                     if (socketFd >= 0) {
-                        try {
-                            if (closeFunc != null) invokeIntMethod.invoke(closeFunc, (Object) new Object[]{socketFd});
-                        } catch (Throwable ignored) {}
+                        try { LibC.INSTANCE.close(socketFd); } catch (Throwable ignored) {}
                         socketFd = -1;
                     }
                 }
             }
 
+            // Запасной вызов через Android cmd
             try {
                 int ms = (int) Math.max(10, Math.min(durationMs, 500));
                 Runtime.getRuntime().exec(new String[]{"cmd", "vibrator", "vibrate", String.valueOf(ms)});
