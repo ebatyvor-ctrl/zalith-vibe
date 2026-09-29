@@ -5,8 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ClientPlayerInteractionManagerMixin",
-    "ClientPlayerEntityMixin",
-    "SoundSystemMixin"
+    "ClientPlayerEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

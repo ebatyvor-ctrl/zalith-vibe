@@ -17,9 +17,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ClientPlayerInteractionManager.class)
 public class ClientPlayerInteractionManagerMixin {
 
-    /**
-     * Вибрация при установке блока ТОЛЬКО если в руке есть предмет/блок
-     */
     @Inject(method = "interactBlock", at = @At("HEAD"))
     private void zalith_onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<?> cir) {
         if (player != null && !player.getStackInHand(hand).isEmpty()) {
@@ -34,6 +31,8 @@ public class ClientPlayerInteractionManagerMixin {
 
     @Inject(method = "attackEntity", at = @At("HEAD"))
     private void zalith_onAttackEntity(PlayerEntity player, Entity target, CallbackInfo ci) {
-        ZalithVibeMod.getInstance().onEntityAttacked();
+        // Проверка на критический удар (в прыжке при падении)
+        boolean isCrit = player.fallDistance > 0.0f && !player.isOnGround() && !player.isClimbing() && !player.isTouchingWater();
+        ZalithVibeMod.getInstance().onEntityAttacked(isCrit);
     }
 }

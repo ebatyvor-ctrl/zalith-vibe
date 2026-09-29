@@ -19,7 +19,7 @@ public class ZalithVibeMod implements ClientModInitializer {
         instance = this;
         this.config = VibrationConfig.load();
         bridge.initialize();
-        LOGGER.info("[ZalithVibe] Advanced tactile haptics ready (Fishing, Creeper, Heartbeat, Shield, Bow)!");
+        LOGGER.info("[ZalithVibe] Advanced haptics loaded successfully!");
     }
 
     public static ZalithVibeMod getInstance() {
@@ -44,9 +44,13 @@ public class ZalithVibeMod implements ClientModInitializer {
         bridge.vibrate(config.breakStrength);
     }
 
-    public void onEntityAttacked() {
-        if (!config.enabled || config.attackStrength <= 0) return;
-        bridge.vibrate(config.attackStrength);
+    public void onEntityAttacked(boolean isCrit) {
+        if (!config.enabled) return;
+        if (isCrit && config.shieldCritEnabled) {
+            bridge.vibrate(3); // Мощный критический удар
+        } else if (config.attackStrength > 0) {
+            bridge.vibrate(config.attackStrength);
+        }
     }
 
     public void onBowPull() {
@@ -69,32 +73,18 @@ public class ZalithVibeMod implements ClientModInitializer {
         bridge.vibrateMicro();
     }
 
-    public void onSoundEvent(String path) {
-        if (!config.enabled) return;
+    public void onFishingBite() {
+        if (!config.enabled || !config.fishingEnabled) return;
+        bridge.vibrate(2); // Чёткий рывок рыбы
+    }
 
-        // Поклёвка на рыбалке
-        if (config.fishingEnabled && (path.contains("fishing_bobber.splash") || path.contains("fishing_bobber.retrieve"))) {
-            bridge.vibrate(2);
-        }
-        // Шипение крипера / взрывчатка
-        else if (config.creeperEnabled && (path.contains("creeper.primed") || path.contains("tnt.primed"))) {
-            bridge.vibrate(3);
-        }
-        // Блок щитом
-        else if (config.shieldCritEnabled && path.contains("shield.block")) {
-            bridge.vibrate(2);
-        }
-        // Критический удар
-        else if (config.shieldCritEnabled && path.contains("attack.crit")) {
-            bridge.vibrate(2);
-        }
-        // Поломка инструмента / брони
-        else if (config.itemBreakEnabled && path.contains("item.break")) {
-            bridge.vibrate(3);
-        }
-        // Поедание пищи
-        else if (config.eatEnabled && (path.contains("generic.eat") || path.contains("generic.drink"))) {
-            bridge.vibrateMicro();
-        }
+    public void onCreeperWarning() {
+        if (!config.enabled || !config.creeperEnabled) return;
+        bridge.vibrate(3); // Тревожный сигнал
+    }
+
+    public void onEatTick() {
+        if (!config.enabled || !config.eatEnabled) return;
+        bridge.vibrateMicro();
     }
 }
