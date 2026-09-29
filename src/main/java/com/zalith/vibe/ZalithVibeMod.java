@@ -1,7 +1,6 @@
 package com.zalith.vibe;
 
 import com.zalith.vibe.bridge.AndroidVibratorBridge;
-import com.zalith.vibe.config.VibrationConfig;
 import net.fabricmc.api.ClientModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,50 +11,34 @@ public class ZalithVibeMod implements ClientModInitializer {
 
     private static ZalithVibeMod instance;
     private final AndroidVibratorBridge bridge = new AndroidVibratorBridge();
-    private VibrationConfig config;
 
     @Override
     public void onInitializeClient() {
         instance = this;
-        this.config = VibrationConfig.load();
         bridge.initialize();
-        LOGGER.info("[ZalithVibe] Initialized with TouchController emulator & multi-strength haptics!");
+        LOGGER.info("[ZalithVibe] Initialized with TouchController alias and multi-pulse haptics!");
     }
 
     public static ZalithVibeMod getInstance() {
         return instance;
     }
 
-    public VibrationConfig getConfig() {
-        return config;
-    }
-
     public AndroidVibratorBridge getBridge() {
         return bridge;
     }
 
-    public void onBlockBroken() {
-        if (!config.enabled || !config.breakEnabled) return;
-        bridge.vibrate(config.breakStrength);
-    }
-
+    // Установка блока: мягкий одиночный отклик (1 импульс)
     public void onBlockPlaced() {
-        if (!config.enabled || !config.placeEnabled) return;
-        bridge.vibrate(config.placeStrength);
+        bridge.vibrate(1);
     }
 
+    // Ломание блока: уверенный двойной отклик (2 импульса)
+    public void onBlockBroken() {
+        bridge.vibrate(2);
+    }
+
+    // Удар по мобу: сильный акцент (2 быстрых импульса)
     public void onEntityAttacked() {
-        if (!config.enabled || !config.attackEnabled) return;
-        bridge.vibrate(config.attackStrength);
-    }
-
-    public void onPlayerHurt() {
-        if (!config.enabled || !config.damageEnabled) return;
-        bridge.vibrate(config.damageStrength);
-    }
-
-    public void onHotbarChanged() {
-        if (!config.enabled || !config.hotbarEnabled) return;
-        bridge.vibrate(config.hotbarStrength);
+        bridge.vibrate(2);
     }
 }

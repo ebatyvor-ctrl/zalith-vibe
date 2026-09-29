@@ -57,7 +57,7 @@ public class AndroidVibratorBridge {
                 if (result == 0) {
                     this.socketFd = fd;
                     this.initialized = true;
-                    ZalithVibeMod.LOGGER.info("[ZalithVibe] Connected to Zalith Launcher socket: @" + target);
+                    ZalithVibeMod.LOGGER.info("[ZalithVibe] Connected to socket: @" + target);
                     return true;
                 } else {
                     LibC.INSTANCE.close(fd);

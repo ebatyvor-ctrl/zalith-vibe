@@ -6,7 +6,6 @@
   "description": "Native vibration feedback for Zalith Launcher on Android",
   "authors": ["ZalithVibe Team"],
   "license": "MIT",
-  "icon": "assets/zalith_vibe/icon.png",
   "environment": "client",
   "provides": [
     "touchcontroller"
@@ -14,9 +13,6 @@
   "entrypoints": {
     "client": [
       "com.zalith.vibe.ZalithVibeMod"
-    ],
-    "modmenu": [
-      "com.zalith.vibe.gui.ModMenuApiImpl"
     ]
   },
   "mixins": [
@@ -25,10 +21,6 @@
   "depends": {
     "fabricloader": ">=0.15.0",
     "minecraft": "~1.21.1",
-    "java": ">=21",
-    "fabric-api": "*"
-  },
-  "suggests": {
-    "modmenu": "*"
+    "java": ">=21"
   }
 }
