@@ -23,9 +23,6 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:${project.fabric_version}"
 
-    // JNA для подключения к Unix-сокету Zalith Launcher
-    compileOnly "net.java.dev.jna:jna:5.14.0"
-
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
     modRuntimeOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 }
