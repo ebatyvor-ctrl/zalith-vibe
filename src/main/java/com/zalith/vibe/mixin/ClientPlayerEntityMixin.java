@@ -1,7 +1,9 @@
 package com.zalith.vibe.mixin;
 
 import com.zalith.vibe.ZalithVibeMod;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.mob.CreeperEntity;
 import net.minecraft.item.BowItem;
 import net.minecraft.item.CrossbowItem;
@@ -33,7 +35,7 @@ public class ClientPlayerEntityMixin {
     private void zalith_onPlayerTick(CallbackInfo ci) {
         ClientPlayerEntity player = (ClientPlayerEntity) (Object) this;
 
-        // 1. Хотбар: безопасное отслеживание смены предмета в руке без приватных полей
+        // 1. Хотбар: безопасное отслеживание смены предмета в руке
         ItemStack currentItem = player.getMainHandStack();
         if (zalith$lastHandItem != null && currentItem != zalith$lastHandItem) {
             ZalithVibeMod.getInstance().onHotbarChanged();
@@ -92,15 +94,18 @@ public class ClientPlayerEntityMixin {
             zalith$lastUseTicks = 0;
         }
 
-        // 6. Шипение крипера поблизости
-        if (player.age % 4 == 0 && player.getWorld() != null) {
+        // 6. Шипение крипера поблизости (используем стабильный MinecraftClient.getInstance().world)
+        if (player.age % 4 == 0) {
             try {
-                Box box = player.getBoundingBox().expand(6.0);
-                List<CreeperEntity> creepers = player.getWorld().getEntitiesByClass(
-                        CreeperEntity.class, box, c -> c.getFuseSpeed() > 0
-                );
-                if (!creepers.isEmpty()) {
-                    ZalithVibeMod.getInstance().onCreeperWarning();
+                ClientWorld world = MinecraftClient.getInstance().world;
+                if (world != null) {
+                    Box box = player.getBoundingBox().expand(6.0);
+                    List<CreeperEntity> creepers = world.getEntitiesByClass(
+                            CreeperEntity.class, box, c -> c.getFuseSpeed() > 0
+                    );
+                    if (!creepers.isEmpty()) {
+                        ZalithVibeMod.getInstance().onCreeperWarning();
+                    }
                 }
             } catch (Throwable ignored) {}
         }
